@@ -1,5 +1,6 @@
 @import "google.js";
 @import "mapbox.js";
+@import "esri.js";
 
 /**
  * Run the Google service provider.
@@ -16,5 +17,14 @@ function runGoogle (context) {
  */
 function runMapbox (context) {
   var map = new MapboxMap();
+  map.create(context);
+}
+
+/**
+ * Run the Esri service provider.
+ * @param  {Sketch context} context 
+ */
+function runEsri (context) {
+  var map = new EsriMap();
   map.create(context);
 }

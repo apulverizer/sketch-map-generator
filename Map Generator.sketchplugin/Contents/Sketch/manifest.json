@@ -15,12 +15,20 @@
       "handler" : "runMapbox",
       "identifier" : "scriptMapbox",
       "shortcut" : "shift cmd b"
+    },
+    {
+      "script" : "main.cocoascript",
+      "name" : "Generate a Map using ArcGIS Online (Esri)",
+      "handler" : "runEsri",
+      "identifier" : "scriptEsri",
+      "shortcut" : "shift cmd e"
     }
   ],
   "menu" : {
     "items" : [
       "scriptGoogle",
-      "scriptMapbox"
+      "scriptMapbox",
+      "scriptEsri"
     ],
     "title" : "Map Generator"
   },
