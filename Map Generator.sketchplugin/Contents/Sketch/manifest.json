@@ -18,10 +18,10 @@
     },
     {
       "script" : "main.cocoascript",
-      "name" : "Generate a Map using ArcGIS Online (Esri)",
+      "name" : "Generate a Map using ArcGIS Online",
       "handler" : "runEsri",
       "identifier" : "scriptEsri",
-      "shortcut" : "shift cmd e"
+      "shortcut" : "shift cmd i"
     }
   ],
   "menu" : {

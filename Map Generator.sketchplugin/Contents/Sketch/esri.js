@@ -2,20 +2,38 @@
 
 function EsriMap () {}
 
-EsriMap.prototype.apiKey     = 'pk.eyJ1IjoiY3JhZnRib3QiLCJhIjoiY2o2ZmRucDVzMmg2MjMzbHZqMzJtZTY2bSJ9.Hc2FEbzqKBnyWRK7mHtCAQ';
-EsriMap.prototype.service    = 'mapbox';
-EsriMap.prototype.minZoom    = 0;
-EsriMap.prototype.maxZoom    = 20;
-EsriMap.prototype.zoomLevels = [];
+EsriMap.prototype.service    = 'esri';
+EsriMap.prototype.scaleLevels = [
+  "100 - Room",
+  "400 - Rooms",
+  "800 - Small Building",
+  "1250 - Building",
+  "2500 - Buildings",
+  "5000 - Street",
+  "10000 - Streets",
+  "20000 - Neighborhood",
+  "40000 - Town",
+  "80000 - City",
+  "160000 - Cities",
+  "320000 - Metro Area",
+  "500000 - County",
+  "750000 - Counties",
+  "3000000 - State/Province",
+  "6000000 - States/Provinces",
+  "12000000 - Small Countries",
+  "25000000 - Big Countries",
+  "50000000 - Continent",
+  "100000000 - World"
+];
 EsriMap.prototype.mapTypes   = [
-  'streets-v10',
-  'outdoors-v10',
-  'light-v9',
-  'dark-v9',
-  'satellite-v9',
-  'satellite-streets-v10',
-  'traffic-day-v2',
-  'traffic-night-v2'
+  'Dark Gray Canvas',
+  'Imagery',
+  'Light Gray Canvas',
+  'National Geographic',
+  'Ocean',
+  'Streets',
+  'Terrain',
+  'Topographic'
 ];
 
 /**
@@ -29,7 +47,6 @@ EsriMap.prototype.create = function (context) {
     if (!checkLayerType(context)) {
       return;
     } else {
-      makeZoomLevels(this.zoomLevels, this.minZoom, this.maxZoom);
 
       var viewElements = [];
       var dialog = this.buildDialog(context, viewElements);
@@ -42,8 +59,43 @@ EsriMap.prototype.create = function (context) {
       var layer = context.selection[0];
       var layerSizes = layer.frame();
       var position = getGeoCode(encodeURIComponent(settings.address));
-      // var imageUrl = 'https://api.mapbox.com/styles/v1/mapbox/' + settings.type + '/static/' + position.lon + ',' + position.lat + ',' + settings.zoom + ',0,0/' + parseInt([layerSizes width]) + 'x' + parseInt([layerSizes height]) + '@2x?access_token=' + this.apiKey;
-      var imageUrl = 'https://services.arcgisonline.com/arcgis/rest/services/World_Street_Map/MapServer/export?bbox=-2.5619086977627527E7%2C-6556282.473844509%2C2.5619086977627527E7%2C2.330510492803532E7&bboxSR=&layers=&layerDefs=&size=&imageSR=&format=jpg&transparent=false&dpi=&time=&layerTimeOptions=&dynamicLayers=&gdbVersion=&mapScale=&f=image'
+
+      // Dictionary to map the user friendly name to the service folder/name
+      var serviceLookup = {
+        'Dark Gray Canvas': 'Canvas/World_Dark_Gray_Base',
+        'Imagery': 'World_Imagery',
+        'Light Gray Canvas': 'Canvas/World_Light_Gray_Base',
+        'National Geographic': 'NatGeo_World_Map',
+        'Ocean': 'Ocean/World_Ocean_Base',
+        'Streets': 'World_Street_Map',
+        'Terrain': 'World_Terrain_Base',
+        'Topographic': 'World_Topo_Map'
+      }
+      
+      // function to convert decimal degress to web mercator
+      var degrees2meters = function(lat,lon) {
+        var x = lon * 20037508.34 / 180;
+        var y = Math.log(Math.tan((90 + lat) * Math.PI / 360)) / (Math.PI / 180);
+        y = y * 20037508.34 / 180;
+        return {
+          y: y,
+          x: x
+        }
+      }
+
+      // Need to convert geocode result to web mercator projection
+      // Seems like a bug in the Map Server at 10.3 where if you specify in bounding box
+      // spatial reference, the scale property is not honored
+      var position102100 = degrees2meters(position.lat, position.lon)
+
+      // create the bounding box to submit to the service (lat/long + 1 meter)
+      var boundingBox = position102100.x + "," + position102100.y + "," + (position102100.x+1) + "," + (position102100.y+1)
+
+      // parse the scale
+      var scale = settings.scale.split(" - ")[0]
+
+      // Use the export map REST endpoint
+      var imageUrl = 'https://services.arcgisonline.com/arcgis/rest/services/' + serviceLookup[settings.type] + '/MapServer/export?bbox=' + boundingBox + '&format=jpg&mapScale=' + scale + '&f=image'
 
       fillLayerWithImage(imageUrl, layer, context);
     }
@@ -51,7 +103,7 @@ EsriMap.prototype.create = function (context) {
 };
 
 /**
- * Builds the Mapbox window.
+ * Builds the Esri window.
  * @param  {Sketch context} context      
  * @param  {Array} viewElements 
  * @return {COSAlertWindow}              
@@ -60,28 +112,28 @@ EsriMap.prototype.buildDialog = function (context, viewElements) {
   var remember = getOption('remember', 0, this.service);
   var dialogWindow = COSAlertWindow.new();
 
-  dialogWindow.setMessageText('Maps Generator (Mapbox)');
-  dialogWindow.setInformativeText('Write an address and choose a zoom option.');
+  dialogWindow.setMessageText('Maps Generator (Esri)');
+  dialogWindow.setInformativeText('Write an address and choose a scale option.');
   dialogWindow.addTextLabelWithValue('Enter an address or a place');
   dialogWindow.addTextFieldWithValue(remember == 0 ? '' : getOption('address', '', this.service));
   dialogWindow.addTextLabelWithValue(' ');
-  dialogWindow.addTextLabelWithValue('Please choose a zoom level');
-  dialogWindow.addTextLabelWithValue('(A higher value increases the zoom level)');
+  dialogWindow.addTextLabelWithValue('Please choose a scale level');
+  dialogWindow.addTextLabelWithValue('(A lower value increases the zoom level)');
 
-  var zoomSelect = createSelect(this.zoomLevels, remember == 0 ? 15 : getOption('zoom', 15, this.service));
-  dialogWindow.addAccessoryView(zoomSelect);
+  var scaleSelect = createSelect(this.scaleLevels, remember == 0 ? 8 : getOption('scale', 8, this.service));
+  dialogWindow.addAccessoryView(scaleSelect);
   dialogWindow.addTextLabelWithValue(' ');
   dialogWindow.addTextLabelWithValue('You can choose a map type as well');
 
-  var typeSelect = createSelect(this.mapTypes, remember == 0 ? 0 : getOption('type', 0, this.service), 200);
+  var typeSelect = createSelect(this.mapTypes, remember == 0 ? 7 : getOption('type', 7, this.service), 200);
   dialogWindow.addAccessoryView(typeSelect);
   dialogWindow.addTextLabelWithValue(' ');
 
   var addressTextBox = dialogWindow.viewAtIndex(1);
 
   dialogWindow.alert().window().setInitialFirstResponder(addressTextBox);
-  addressTextBox.setNextKeyView(zoomSelect);
-  zoomSelect.setNextKeyView(typeSelect);
+  addressTextBox.setNextKeyView(scaleSelect);
+  scaleSelect.setNextKeyView(typeSelect);
 
   var checkbox = createCheck('Remember my options', remember);
   dialogWindow.addAccessoryView(checkbox);
@@ -97,7 +149,7 @@ EsriMap.prototype.buildDialog = function (context, viewElements) {
     type: 'input'
   });
   viewElements.push({
-    key: 'zoom',
+    key: 'scale',
     index: 5,
     type: 'select'
   });
