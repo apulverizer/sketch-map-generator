@@ -57,7 +57,6 @@ EsriMap.prototype.create = function (context) {
       }
 
       var layer = context.selection[0];
-      var layerSizes = layer.frame();
       var position = getGeoCode(encodeURIComponent(settings.address));
 
       // Dictionary to map the user friendly name to the service folder/name
@@ -94,9 +93,12 @@ EsriMap.prototype.create = function (context) {
       // parse the scale
       var scale = settings.scale.split(" - ")[0]
 
-      // Use the export map REST endpoint
-      var imageUrl = 'https://services.arcgisonline.com/arcgis/rest/services/' + serviceLookup[settings.type] + '/MapServer/export?bbox=' + boundingBox + '&format=jpg&mapScale=' + scale + '&f=image'
+      var width = layer.frame().width().toString()
+      var height = layer.frame().height().toString()
 
+      // Use the export map REST endpoint
+      var imageUrl = 'https://services.arcgisonline.com/arcgis/rest/services/' + serviceLookup[settings.type] + '/MapServer/export?bbox=' + boundingBox + '&format=jpg&mapScale=' + scale + '&f=image&size=' + width + ',' + height
+      log(imageUrl)
       fillLayerWithImage(imageUrl, layer, context);
     }
   }
